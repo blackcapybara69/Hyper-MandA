@@ -1,0 +1,315 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Race Car Game</title>
+  <style>
+    html, body {
+      margin: 0;
+      height: 100%;
+      background: #111;
+      color: #fff;
+      overflow: hidden;
+      font-family: system-ui, -apple-system, Segoe UI, Roboto, Arial, sans-serif;
+    }
+
+    canvas {
+      display: block;
+    }
+  </style>
+</head>
+<body>
+  <canvas id="game"></canvas>
+  <script>
+    class Input {
+      constructor() {
+        this.keys = new Set();
+        window.addEventListener('keydown', (e) => this.keys.add(e.key.toLowerCase()));
+        window.addEventListener('keyup', (e) => this.keys.delete(e.key.toLowerCase()));
+      }
+      isDown(key) {
+        return this.keys.has(key.toLowerCase());
+      }
+    }
+
+    class Game {
+      constructor(canvas, input) {
+        this.canvas = canvas;
+        this.ctx = canvas.getContext('2d');
+        this.input = input;
+
+        this.car = {
+          x: canvas.width / 2,
+          y: canvas.height / 2,
+          angle: 0,
+          vel: 0,
+        };
+
+        this.maxSpeed = 6;
+        this.acc = 0.2;
+        this.friction = 0.05;
+        this.turnSpeed = 0.04;
+
+        // Track and lap system
+        this.checkpoints = [
+          { x: canvas.width * 0.8, y: canvas.height * 0.2, passed: false },
+          { x: canvas.width * 0.8, y: canvas.height * 0.8, passed: false },
+          { x: canvas.width * 0.2, y: canvas.height * 0.8, passed: false },
+          { x: canvas.width * 0.2, y: canvas.height * 0.2, passed: false }
+        ];
+        
+        this.startLine = { x: canvas.width / 2, y: canvas.height * 0.2 };
+        this.lapStartTime = performance.now();
+        this.currentLapTime = 0;
+        this.lapCount = 0;
+        this.bestLaps = JSON.parse(localStorage.getItem('raceLapTimes') || '[]');
+        this.showLeaderboard = false;
+      }
+
+      update(dt) {
+        const inp = this.input;
+
+        // Throttle / brake
+        if (inp.isDown('arrowup') || inp.isDown('w')) this.car.vel += this.acc;
+        if (inp.isDown('arrowdown') || inp.isDown('s')) this.car.vel -= this.acc;
+
+        // Friction
+        if (Math.abs(this.car.vel) < this.friction) this.car.vel = 0;
+        else this.car.vel += this.car.vel > 0 ? -this.friction : this.friction;
+
+        // Clamp speed
+        this.car.vel = Math.max(Math.min(this.car.vel, this.maxSpeed), -this.maxSpeed);
+
+        // Steering (reverse steering when going backwards)
+        if (this.car.vel !== 0) {
+          const dir = this.car.vel > 0 ? 1 : -1;
+          if (inp.isDown('arrowleft') || inp.isDown('a')) this.car.angle -= this.turnSpeed * dir;
+          if (inp.isDown('arrowright') || inp.isDown('d')) this.car.angle += this.turnSpeed * dir;
+        }
+
+        // Integrate position
+        this.car.x += Math.cos(this.car.angle) * this.car.vel;
+        this.car.y += Math.sin(this.car.angle) * this.car.vel;
+
+        // Wrap around screen edges
+        if (this.car.x < 0) this.car.x += this.canvas.width;
+        if (this.car.x > this.canvas.width) this.car.x -= this.canvas.width;
+        if (this.car.y < 0) this.car.y += this.canvas.height;
+        if (this.car.y > this.canvas.height) this.car.y -= this.canvas.height;
+
+        // Update lap timer
+        this.currentLapTime = performance.now() - this.lapStartTime;
+
+        // Check checkpoints
+        this.checkpoints.forEach((checkpoint, index) => {
+          const distance = Math.sqrt(
+            Math.pow(this.car.x - checkpoint.x, 2) + Math.pow(this.car.y - checkpoint.y, 2)
+          );
+          if (distance < 30 && !checkpoint.passed) {
+            checkpoint.passed = true;
+          }
+        });
+
+        // Check if crossed start line (lap completion)
+        const startDistance = Math.sqrt(
+          Math.pow(this.car.x - this.startLine.x, 2) + Math.pow(this.car.y - this.startLine.y, 2)
+        );
+        if (startDistance < 30 && this.allCheckpointsPassed()) {
+          this.completeLap();
+        }
+
+        // Toggle leaderboard
+        if (this.input.isDown('tab')) {
+          this.showLeaderboard = !this.showLeaderboard;
+        }
+      }
+
+      allCheckpointsPassed() {
+        return this.checkpoints.every(checkpoint => checkpoint.passed);
+      }
+
+      completeLap() {
+        this.lapCount++;
+        const lapTime = this.currentLapTime;
+        
+        // Add to best laps if it's a good time
+        this.bestLaps.push({
+          lap: this.lapCount,
+          time: lapTime,
+          date: new Date().toLocaleDateString()
+        });
+        
+        // Sort by time and keep only top 5
+        this.bestLaps.sort((a, b) => a.time - b.time);
+        this.bestLaps = this.bestLaps.slice(0, 5);
+        
+        // Save to localStorage
+        localStorage.setItem('raceLapTimes', JSON.stringify(this.bestLaps));
+        
+        // Reset for next lap
+        this.checkpoints.forEach(checkpoint => checkpoint.passed = false);
+        this.lapStartTime = performance.now();
+      }
+
+      formatTime(ms) {
+        const seconds = Math.floor(ms / 1000);
+        const milliseconds = Math.floor(ms % 1000);
+        return `${seconds}.${milliseconds.toString().padStart(3, '0')}`;
+      }
+
+      render() {
+        const ctx = this.ctx;
+        const { width, height } = this.canvas;
+        ctx.clearRect(0, 0, width, height);
+
+        // Draw track outline
+        ctx.strokeStyle = '#666';
+        ctx.lineWidth = 4;
+        ctx.beginPath();
+        ctx.rect(width * 0.1, height * 0.1, width * 0.8, height * 0.8);
+        ctx.stroke();
+        
+        // Draw inner track boundary
+        ctx.strokeStyle = '#444';
+        ctx.lineWidth = 2;
+        ctx.beginPath();
+        ctx.rect(width * 0.15, height * 0.15, width * 0.7, height * 0.7);
+        ctx.stroke();
+
+        // Draw start line
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 3;
+        ctx.beginPath();
+        ctx.moveTo(this.startLine.x - 20, this.startLine.y);
+        ctx.lineTo(this.startLine.x + 20, this.startLine.y);
+        ctx.stroke();
+
+        // Draw checkpoints
+        this.checkpoints.forEach((checkpoint, index) => {
+          ctx.fillStyle = checkpoint.passed ? '#4caf50' : '#ff9800';
+          ctx.beginPath();
+          ctx.arc(checkpoint.x, checkpoint.y, 15, 0, Math.PI * 2);
+          ctx.fill();
+          
+          ctx.fillStyle = '#fff';
+          ctx.font = '12px system-ui';
+          ctx.textAlign = 'center';
+          ctx.fillText((index + 1).toString(), checkpoint.x, checkpoint.y + 4);
+        });
+
+        // Draw car as a rectangle with details
+        ctx.save();
+        ctx.translate(this.car.x, this.car.y);
+        ctx.rotate(this.car.angle);
+        
+        // Car body
+        ctx.fillStyle = '#e91e63';
+        ctx.fillRect(-12, -8, 24, 16);
+        
+        // Windshield
+        ctx.fillStyle = '#4fc3f7';
+        ctx.fillRect(6, -6, 8, 12);
+        
+        // Wheels
+        ctx.fillStyle = '#333';
+        ctx.fillRect(-10, -10, 4, 3);
+        ctx.fillRect(-10, 7, 4, 3);
+        ctx.fillRect(8, -10, 4, 3);
+        ctx.fillRect(8, 7, 4, 3);
+        
+        // Headlights
+        ctx.fillStyle = '#fff';
+        ctx.fillRect(12, -3, 2, 2);
+        ctx.fillRect(12, 1, 2, 2);
+        
+        ctx.restore();
+
+        // HUD
+        ctx.fillStyle = '#fff';
+        ctx.font = '16px system-ui';
+        ctx.textAlign = 'left';
+        
+        // Current lap info
+        ctx.fillText(`Lap: ${this.lapCount}`, 10, 25);
+        ctx.fillText(`Time: ${this.formatTime(this.currentLapTime)}`, 10, 50);
+        ctx.fillText(`Speed: ${Math.abs(this.car.vel).toFixed(2)}`, 10, 75);
+        
+        // Best lap
+        if (this.bestLaps.length > 0) {
+          ctx.fillText(`Best: ${this.formatTime(this.bestLaps[0].time)}`, 10, 100);
+        }
+        
+        // Instructions
+        ctx.font = '12px system-ui';
+        ctx.fillText('TAB: Toggle Leaderboard', 10, height - 20);
+        
+        // Leaderboard
+        if (this.showLeaderboard) {
+          this.drawLeaderboard(ctx, width, height);
+        }
+      }
+      
+      drawLeaderboard(ctx, width, height) {
+        // Background
+        ctx.fillStyle = 'rgba(0, 0, 0, 0.8)';
+        ctx.fillRect(width / 2 - 150, height / 2 - 120, 300, 240);
+        
+        // Border
+        ctx.strokeStyle = '#fff';
+        ctx.lineWidth = 2;
+        ctx.strokeRect(width / 2 - 150, height / 2 - 120, 300, 240);
+        
+        // Title
+        ctx.fillStyle = '#fff';
+        ctx.font = 'bold 18px system-ui';
+        ctx.textAlign = 'center';
+        ctx.fillText('TOP 5 LAP TIMES', width / 2, height / 2 - 90);
+        
+        // Lap times
+        ctx.font = '14px system-ui';
+        ctx.textAlign = 'left';
+        this.bestLaps.forEach((lap, index) => {
+          const y = height / 2 - 60 + (index * 25);
+          ctx.fillStyle = index === 0 ? '#ffd700' : '#fff';
+          ctx.fillText(`${index + 1}. ${this.formatTime(lap.time)}`, width / 2 - 130, y);
+          ctx.fillStyle = '#aaa';
+          ctx.font = '12px system-ui';
+          ctx.fillText(`(${lap.date})`, width / 2 - 10, y);
+          ctx.font = '14px system-ui';
+        });
+        
+        if (this.bestLaps.length === 0) {
+          ctx.fillStyle = '#aaa';
+          ctx.textAlign = 'center';
+          ctx.fillText('No lap times yet', width / 2, height / 2 - 30);
+        }
+      }
+    }
+
+    // Initialize game
+    const canvas = document.getElementById('game');
+    const ctx = canvas.getContext('2d');
+
+    function resize() {
+      canvas.width = window.innerWidth;
+      canvas.height = window.innerHeight;
+    }
+    resize();
+    window.addEventListener('resize', resize);
+
+    const input = new Input();
+    const game = new Game(canvas, input);
+
+    let last = performance.now();
+    function loop(now) {
+      const dt = Math.min(0.05, (now - last) / 1000);
+      last = now;
+      game.update(dt);
+      game.render();
+      requestAnimationFrame(loop);
+    }
+    requestAnimationFrame(loop);
+  </script>
+</body>
+</html>

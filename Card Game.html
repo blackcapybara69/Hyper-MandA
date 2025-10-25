@@ -1,0 +1,65 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>Solitaire Demo</title>
+<style>
+  body {
+    font-family: system-ui, sans-serif;
+    background: radial-gradient(circle at 30% 30%, #0b5, #083) fixed;
+    color: #fff;
+    margin: 0; padding: 16px;
+  }
+  #game { max-width: 800px; margin: auto; }
+  .pile { display: inline-block; width: 80px; height: 120px; margin: 0 8px; border: 2px dashed rgba(255,255,255,0.4); border-radius: 8px; vertical-align: top; position: relative; }
+  .card { width: 80px; height: 112px; border-radius: 8px; background: #fff; color: #111; display: grid; place-items: center; position: absolute; top:0; left:0; box-shadow:0 2px 6px rgba(0,0,0,0.4); cursor: pointer; }
+  .card.red { color: #c22; }
+</style>
+</head>
+<body>
+<h1>Solitaire Demo</h1>
+<div id="stock" class="pile">Stock</div>
+<div id="waste" class="pile">Waste</div>
+
+<script>
+const SUITS = ["♠","♥","♦","♣"];
+const RANKS = ["A","2","3","4","5","6","7","8","9","10","J","Q","K"];
+let deck = [], stock = [], waste = [];
+
+function createDeck() {
+  deck = [];
+  for (let s of SUITS) {
+    for (let r of RANKS) deck.push({suit:s, rank:r, faceUp:false});
+  }
+  stock = deck.sort(()=>Math.random()-0.5);
+}
+
+function renderPile(pileDiv, cards) {
+  pileDiv.innerHTML = "";
+  cards.forEach((card,i)=>{
+    const c = document.createElement("div");
+    c.className = "card" + ((card.suit==="♥"||card.suit==="♦")?" red":"");
+    c.textContent = card.faceUp ? card.rank+card.suit : "🂠";
+    c.style.top = (i*0)+"px"; // stacking for now
+    pileDiv.appendChild(c);
+  });
+}
+
+function drawCard() {
+  if(stock.length===0) return;
+  let card = stock.pop();
+  card.faceUp=true;
+  waste.push(card);
+  renderPile(document.getElementById("stock"), stock);
+  renderPile(document.getElementById("waste"), waste);
+}
+
+createDeck();
+renderPile(document.getElementById("stock"), stock);
+renderPile(document.getElementById("waste"), waste);
+
+document.getElementById("stock").addEventListener("click", drawCard);
+</script>
+</body>
+</html>

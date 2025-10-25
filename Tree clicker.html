@@ -1,0 +1,307 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Tree Clicker</title>
+  <style>
+    /* ======= Reset & base styles ======= */
+* 
+
+{
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+}
+
+/* ======= Container layout ======= */
+.container {
+  display: flex;
+  justify-content: space-between;
+  padding: 20px;
+  min-height: 100vh;
+  background: #f0f8ff; /* Light blue background for main game area */
+}
+
+/* ======= Header styles ======= */
+header {
+  position: fixed; /* keep counters at top */
+  top: 0;
+  left: 0;
+  right: 0;
+  background: #4caf50; /* Green header */
+  color: white;
+  padding: 10px 15px;
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  z-index: 100;
+}
+
+header h1 {
+  font-size: 1.8em;
+  text-align: center;
+}
+
+/* Counters styling */
+.counters span {
+  margin-left: 20px;
+  font-weight: bold;
+}
+
+/* ======= Main game area ======= */
+main {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  margin-top: 80px; /* leave space for fixed header */
+}
+
+/* Chop tree button styles */
+.tree-btn {
+  font-size: 2em; /* make button large */
+  padding: 30px 50px;
+  border-radius: 15px;
+  border: none;
+  background: #228B22; /* Forest green button */
+  color: white;
+  cursor: pointer;
+  transition: transform 0.1s, background 0.2s;
+}
+
+.tree-btn:active {
+  transform: scale(0.95); /* small press animation */
+  background: #196619;
+  box-shadow: inset 2px 2px 5px rgba(0,0,0,0.2);
+}
+
+/* Upgrade buttons below main button */
+.upgrades {
+  margin-top: 20px;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+}
+
+.upgrades button {
+  padding: 12px 20px;
+  font-size: 1em;
+  border-radius: 10px;
+  border: none;
+  background: #8B4513; /* brown button for upgrades */
+  color: white;
+  cursor: pointer;
+  transition: background 0.2s;
+}
+
+.upgrades button:hover {
+  background: #5c2f0f; /* darker on hover */
+}
+
+/* ======= Right-side upgrade panel ======= */
+.upgrade-panel {
+  width: 220px;
+  padding: 20px;
+  background: #ffffffcc; /* semi-transparent white */
+  border-radius: 15px;
+  box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+  margin-left: 20px;
+}
+
+.upgrade-panel h2 {
+  margin-bottom: 15px;
+  color: #333;
+  text-align: center;
+}
+
+/* Individual upgrade item styling */
+.upgrade-item {
+  display: flex;
+  justify-content: space-between;
+  padding: 10px;
+  margin-bottom: 10px;
+  border-bottom: 1px solid #ddd;
+}
+
+.upgrade-item span {
+  display: inline-block;
+}
+
+/* ======= Responsive for smaller screens ======= */
+@media (max-width: 900px) {
+  .container {
+    flex-direction: column;
+    align-items: center;
+  }
+
+  .upgrade-panel {
+    width: 90%;
+    margin: 20px 0 0 0;
+  }
+}
+  </style>
+</head>
+<body>
+  <div class="container">
+
+    <!-- ======= Header with game title and counters ======= -->
+    <header>
+      <h1>🌳 Tree Clicker 🌳</h1>
+      <div class="counters">
+        <!-- Display current amount of wood -->
+        <span>Wood: <span id="wood">0</span></span>
+        <!-- Display number of seeds owned -->
+        <span>Seeds: <span id="seeds">0</span></span>
+      </div>
+    </header>
+
+    <!-- ======= Main game area ======= -->
+    <main>
+      <!-- Big button to chop tree manually -->
+      <button id="tree" class="tree-btn">Chop Tree</button>
+
+      <!-- Upgrade buttons below the chop tree button -->
+      <div class="upgrades">
+        <!-- Buy seed to get passive wood per second -->
+        <button id="buySeed">Buy Seed (Cost: 10 wood)</button>
+        <!-- Upgrade axe to increase wood per click -->
+        <button id="buyAxe">Upgrade Axe (Cost: 50 wood)</button>
+        <!-- Hire lumberjack to generate more wood per second -->
+        <button id="buyLumberjack">Hire Lumberjack (Cost: 100 wood)</button>
+      </div>
+    </main>
+
+    <!-- ======= Right-side upgrade panel ======= -->
+    <aside class="upgrade-panel">
+      <h2>Upgrades</h2>
+
+      <!-- Seed upgrade info -->
+      <div class="upgrade-item" id="panelSeed">
+        <span>Seed</span>
+        <span>+1 wood/sec</span>
+        <span id="panelSeedCost">10 wood</span>
+      </div>
+
+      <!-- Axe upgrade info -->
+      <div class="upgrade-item" id="panelAxe">
+        <span>Axe</span>
+        <span>+1 wood/click</span>
+        <span id="panelAxeCost">100 wood</span>
+      </div>
+
+      <!-- Lumberjack upgrade info -->
+      <div class="upgrade-item" id="panelLumberjack">
+        <span>Lumberjack</span>
+        <span>+5 wood/sec</span>
+        <span id="panelLumberjackCost">1000 wood</span>
+      </div>
+    </aside>
+  </div>
+
+  <!-- Link to JavaScript file -->
+  <script>
+    /* ======= Tree Clicker JavaScript ======= */
+
+/* ======= Initialize resources ======= */
+let wood = 0;                 /* Current wood count */
+let seeds = 0;                /* Number of seeds owned */
+let axes = 0;                 /* Number of axes owned */
+let lumberjacks = 0;          /* Number of lumberjacks hired */
+
+/* ======= Upgrade costs ======= */
+let seedCost = 10;            /* Initial cost for seeds */
+let axeCost = 100;            /* Initial cost for axe */
+let lumberjackCost = 1000;    /* Initial cost for lumberjack */
+
+/* ======= Wood generation ======= */
+let woodPerClick = 1;         /* Wood gained per chop */
+let woodPerSeed = 1;          /* Passive wood per seed per second */
+let woodPerLumberjack = 5;    /* Passive wood per lumberjack per second */
+
+/* ======= Get HTML elements ======= */
+const woodDisplay = document.getElementById("wood");
+const seedsDisplay = document.getElementById("seeds");
+const axesDisplay = document.getElementById("panelAxe");
+const lumberjacksDisplay = document.getElementById("panelLumberjack");
+
+const treeBtn = document.getElementById("tree");
+const buySeedBtn = document.getElementById("buySeed");
+const buyAxeBtn = document.getElementById("buyAxe");
+const buyLumberjackBtn = document.getElementById("buyLumberjack");
+
+const panelSeedCost = document.getElementById("panelSeedCost");
+const panelAxeCost = document.getElementById("panelAxeCost");
+const panelLumberjackCost = document.getElementById("panelLumberjackCost");
+
+/* ======= Update all counters on screen ======= */
+function updateDisplay() {
+  woodDisplay.textContent = wood;
+  seedsDisplay.textContent = seeds;
+  
+  /* Update axes and lumberjack count on right panel */
+  axesDisplay.querySelector("span:nth-child(2)").textContent = `+${woodPerClick} wood/click (${axes})`;
+  lumberjacksDisplay.querySelector("span:nth-child(2)").textContent = `+${woodPerLumberjack} wood/sec (${lumberjacks})`;
+
+  /* Update costs displayed */
+  panelSeedCost.textContent = `${seedCost} wood`;
+  panelAxeCost.textContent = `${axeCost} wood`;
+  panelLumberjackCost.textContent = `${lumberjackCost} wood`;
+
+  /* Update buttons text for clarity */
+  buySeedBtn.textContent = `Buy Seed (Cost: ${seedCost} wood)`;
+  buyAxeBtn.textContent = `Upgrade Axe (Cost: ${axeCost} wood)`;
+  buyLumberjackBtn.textContent = `Hire Lumberjack (Cost: ${lumberjackCost} wood)`;
+}
+
+/* ======= Chop tree manually ======= */
+treeBtn.addEventListener("click", () => {
+  wood += woodPerClick;
+  updateDisplay();
+});
+
+/* ======= Buy seed ======= */
+buySeedBtn.addEventListener("click", () => {
+  if (wood >= seedCost) {
+    wood -= seedCost;
+    seeds++;
+    seedCost = Math.floor(seedCost * 1.5); /* Increase cost for next seed */
+    updateDisplay();
+  }
+});
+
+/* ======= Buy axe ======= */
+buyAxeBtn.addEventListener("click", () => {
+  if (wood >= axeCost) {
+    wood -= axeCost;
+    axes++;
+    woodPerClick += 1;                   /* Each axe adds +1 wood per click */
+    axeCost = Math.floor(axeCost * 1.7); /* Increase cost for next axe */
+    updateDisplay();
+  }
+});
+
+/* ======= Hire lumberjack ======= */
+buyLumberjackBtn.addEventListener("click", () => {
+  if (wood >= lumberjackCost) {
+    wood -= lumberjackCost;
+    lumberjacks++;
+    lumberjackCost = Math.floor(lumberjackCost * 2); /* Increase cost for next lumberjack */
+    updateDisplay();
+  }
+});
+
+/* ======= Passive wood generation ======= */
+setInterval(() => {
+  /* Wood from seeds */
+  wood += seeds * woodPerSeed;
+
+  /* Wood from lumberjacks */
+  wood += lumberjacks * woodPerLumberjack;
+
+  updateDisplay();
+}, 1000); /* Every second */
+
+  </script>
+</body>
+</html>

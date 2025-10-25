@@ -1,0 +1,275 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>School Simulator</title>
+    <style>
+      /* Basic page layout */
+      :root { --bg: #0f172a; --card: #111827; --text: #e5e7eb; --accent: #60a5fa; --muted: #9ca3af; }
+      html, body { height: 100%; }
+      body {
+        margin: 0; font-family: system-ui, -apple-system, Segoe UI, Roboto, Ubuntu, Cantarell, Noto Sans, "Helvetica Neue", Arial, "Apple Color Emoji", "Segoe UI Emoji";
+        background: linear-gradient(180deg, #0b1020, #0f172a 40%);
+        color: var(--text);
+      }
+      header { display: flex; align-items: center; justify-content: space-between; padding: 12px 20px; background: rgba(17,24,39,0.7); backdrop-filter: blur(6px); border-bottom: 1px solid #1f2937; }
+      h1 { font-size: 18px; margin: 0; color: #f3f4f6; }
+      #ui { display: flex; gap: 16px; color: var(--muted); }
+      #ui strong { color: var(--text); }
+      main { display: grid; place-items: center; padding: 20px; }
+      canvas { background: #0b1020; border: 1px solid #1f2937; box-shadow: 0 10px 30px rgba(0,0,0,0.35); border-radius: 8px; }
+      
+      /* Question modal */
+      .question-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.8); display: flex; align-items: center; justify-content: center; z-index: 1000; }
+      .question-box { background: var(--card); border: 1px solid #1f2937; border-radius: 12px; padding: 24px; max-width: 500px; width: 90%; }
+      .question-box h2 { margin: 0 0 16px 0; color: var(--accent); }
+      .question-box p { margin: 0 0 20px 0; line-height: 1.5; }
+      .question-box button { background: var(--accent); color: white; border: none; padding: 10px 20px; border-radius: 6px; cursor: pointer; margin: 4px; }
+      .question-box button:hover { background: #3b82f6; }
+      .hidden { display: none !important; }
+      footer { text-align: center; color: var(--muted); padding: 12px; font-size: 12px; }
+
+      /* Legend */
+      .legend { position: absolute; top: 60px; right: 20px; background: #111827; border: 1px solid #1f2937; border-radius: 8px; padding: 8px 10px; font-size: 12px; color: var(--muted); }
+      .legend div { display: flex; align-items: center; gap: 6px; margin: 4px 0; }
+      .swatch { width: 12px; height: 12px; border-radius: 2px; display: inline-block; }
+    </style>
+  </head>
+  <body>
+    <header>
+      <h1>School Simulator</h1>
+      <div id="ui">
+        <span>Sim Time: <strong id="sim-time">08:00</strong></span>
+        <span>Period: <strong id="period-name">Homeroom</strong></span>
+      </div>
+    </header>
+    <main>
+      <canvas id="game" width="800" height="500"></canvas>
+      <div id="question-modal" class="question-modal hidden">
+        <div class="question-box">
+          <h2 id="question-title">Question</h2>
+          <p id="question-text"></p>
+          <div id="question-options"></div>
+        </div>
+      </div>
+    </main>
+    <footer>
+      <p>Complete school simulator in a single HTML file. No build tools required.</p>
+    </footer>
+    <script>
+      // Minimal school simulator in vanilla JS
+      (function () {
+        const canvas = document.getElementById('game');
+        const ctx = canvas.getContext('2d');
+        const timeEl = document.getElementById('sim-time');
+        const periodEl = document.getElementById('period-name');
+
+        const W = canvas.width, H = canvas.height;
+
+        // Map layout (very simple): 2x2 classrooms and a hallway
+        const rooms = [
+          { name: 'Homeroom', x: 40,  y: 40,  w: 300, h: 180, color: '#1d4ed8' },
+          { name: 'Math',     x: 460, y: 40,  w: 300, h: 180, color: '#059669' },
+          { name: 'Science',  x: 40,  y: 280, w: 300, h: 180, color: '#a21caf' },
+          { name: 'History',  x: 460, y: 280, w: 300, h: 180, color: '#b45309' },
+        ];
+        const hallway = { x: 360, y: 40, w: 80, h: 420, color: '#374151' };
+
+        // Schedule in minutes since 08:00
+        const schedule = [
+          { start: 0,   end: 20,  room: 'Homeroom' },
+          { start: 20,  end: 60,  room: 'Math' },
+          { start: 60,  end: 100, room: 'Science' },
+          { start: 100, end: 140, room: 'History' },
+        ];
+
+        // Questions for each subject
+        const questions = {
+          'Math': [
+            { q: 'What is 12 × 7?', options: ['84', '77', '91', '63'], correct: 0 },
+            { q: 'What is the square root of 144?', options: ['11', '12', '13', '14'], correct: 1 },
+            { q: 'What is 15% of 80?', options: ['10', '12', '15', '18'], correct: 1 }
+          ],
+          'Science': [
+            { q: 'What gas do plants absorb from the atmosphere?', options: ['Oxygen', 'Nitrogen', 'Carbon Dioxide', 'Hydrogen'], correct: 2 },
+            { q: 'How many bones are in an adult human body?', options: ['196', '206', '216', '226'], correct: 1 },
+            { q: 'What is the chemical symbol for gold?', options: ['Go', 'Au', 'Ag', 'Gd'], correct: 1 }
+          ],
+          'History': [
+            { q: 'In which year did World War II end?', options: ['1944', '1945', '1946', '1947'], correct: 1 },
+            { q: 'Who was the first President of the United States?', options: ['Thomas Jefferson', 'John Adams', 'George Washington', 'Benjamin Franklin'], correct: 2 },
+            { q: 'Which ancient wonder was located in Alexandria?', options: ['Hanging Gardens', 'Lighthouse', 'Colossus', 'Mausoleum'], correct: 1 }
+          ]
+        };
+
+        function roomByName(name) { return rooms.find(r => r.name === name); }
+        function roomCenter(r) { return { x: r.x + r.w/2, y: r.y + r.h/2 }; }
+
+        // Student agent
+        const student = {
+          x: roomCenter(roomByName('Homeroom')).x,
+          y: roomCenter(roomByName('Homeroom')).y,
+          speed: 90, // px/sec
+          target: roomCenter(roomByName('Homeroom')),
+          color: '#f59e0b'
+        };
+
+        // Sim time state
+        let simMinutes = 0; // 0 == 08:00
+        let last = performance.now();
+        let isPaused = false;
+        let currentPeriodIndex = 0;
+        let hasAnsweredForPeriod = { 0: true }; // Homeroom doesn't require a question
+
+        // Question modal elements
+        const modal = document.getElementById('question-modal');
+        const questionTitle = document.getElementById('question-title');
+        const questionText = document.getElementById('question-text');
+        const questionOptions = document.getElementById('question-options');
+
+        function formatTime(mins) {
+          const total = 8*60 + mins; // since 08:00
+          const hh = Math.floor(total / 60);
+          const mm = total % 60;
+          return `${String(hh).padStart(2,'0')}:${String(mm).padStart(2,'0')}`;
+        }
+
+        function currentPeriod(mins) {
+          return schedule.find(p => mins >= p.start && mins < p.end) || schedule[schedule.length - 1];
+        }
+
+        function setTargetToRoom(name) {
+          const rc = roomCenter(roomByName(name));
+          student.target = { x: rc.x, y: rc.y };
+        }
+
+        function showQuestion(subject) {
+          if (!questions[subject]) return;
+          
+          const questionSet = questions[subject];
+          const question = questionSet[Math.floor(Math.random() * questionSet.length)];
+          
+          questionTitle.textContent = `${subject} Question`;
+          questionText.textContent = question.q;
+          
+          questionOptions.innerHTML = '';
+          question.options.forEach((option, index) => {
+            const button = document.createElement('button');
+            button.textContent = option;
+            button.onclick = () => checkAnswer(index, question.correct);
+            questionOptions.appendChild(button);
+          });
+          
+          modal.classList.remove('hidden');
+          isPaused = true;
+        }
+
+        function checkAnswer(selected, correct) {
+          const buttons = questionOptions.querySelectorAll('button');
+          buttons.forEach((btn, index) => {
+            btn.disabled = true;
+            if (index === correct) {
+              btn.style.background = '#059669'; // green
+            } else if (index === selected && index !== correct) {
+              btn.style.background = '#dc2626'; // red
+            }
+          });
+          
+          setTimeout(() => {
+            modal.classList.add('hidden');
+            isPaused = false;
+            hasAnsweredForPeriod[currentPeriodIndex] = true;
+          }, 1500);
+        }
+
+        function update(dt) {
+          if (isPaused) return;
+          
+          // Speed up time: 1 real second = 6 sim minutes
+          simMinutes += dt * 6;
+          if (simMinutes >= schedule[schedule.length - 1].end) {
+            simMinutes = 0;
+            currentPeriodIndex = 0;
+            hasAnsweredForPeriod = { 0: true };
+          }
+
+          const period = currentPeriod(simMinutes);
+          const newPeriodIndex = schedule.findIndex(p => p === period);
+          
+          // Check if we've moved to a new period that requires a question
+          if (newPeriodIndex !== currentPeriodIndex && newPeriodIndex > 0) {
+            currentPeriodIndex = newPeriodIndex;
+            if (!hasAnsweredForPeriod[currentPeriodIndex] && questions[period.room]) {
+              showQuestion(period.room);
+              return;
+            }
+          }
+          
+          periodEl.textContent = period.room;
+          timeEl.textContent = formatTime(Math.floor(simMinutes));
+
+          // Move student toward the center of current period's room
+          setTargetToRoom(period.room);
+
+          const dx = student.target.x - student.x;
+          const dy = student.target.y - student.y;
+          const dist = Math.hypot(dx, dy);
+          if (dist > 1) {
+            const vx = (dx / dist) * student.speed * dt;
+            const vy = (dy / dist) * student.speed * dt;
+            student.x += vx;
+            student.y += vy;
+          }
+        }
+
+        function drawRoom(r) {
+          ctx.fillStyle = r.color;
+          ctx.globalAlpha = 0.25;
+          ctx.fillRect(r.x, r.y, r.w, r.h);
+          ctx.globalAlpha = 1.0;
+          ctx.strokeStyle = '#1f2937';
+          ctx.lineWidth = 2;
+          ctx.strokeRect(r.x, r.y, r.w, r.h);
+          ctx.fillStyle = '#e5e7eb';
+          ctx.font = '14px system-ui';
+          ctx.fillText(r.name, r.x + 8, r.y + 20);
+        }
+
+        function render() {
+          ctx.clearRect(0, 0, W, H);
+
+          // Hallway
+          ctx.fillStyle = hallway.color;
+          ctx.globalAlpha = 0.2;
+          ctx.fillRect(hallway.x, hallway.y, hallway.w, hallway.h);
+          ctx.globalAlpha = 1.0;
+
+          // Rooms
+          rooms.forEach(drawRoom);
+
+          // Student
+          ctx.fillStyle = student.color;
+          ctx.beginPath();
+          ctx.arc(student.x, student.y, 8, 0, Math.PI * 2);
+          ctx.fill();
+
+          // Legend
+          ctx.fillStyle = '#9ca3af';
+          ctx.font = '12px system-ui';
+          ctx.fillText('Student', 12, H - 12);
+        }
+
+        function tick(now) {
+          const dt = Math.min(0.05, (now - last) / 1000); // clamp large frames
+          last = now;
+          update(dt);
+          render();
+          requestAnimationFrame(tick);
+        }
+
+        requestAnimationFrame(tick);
+      })();
+    </script>
+  </body>
+</html>

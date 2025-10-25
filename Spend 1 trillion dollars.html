@@ -1,0 +1,283 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Spend One Trillion Dollars</title>
+  <style>
+    :root{
+      --bg:#F5F5DC;             /* beige to match your homepage */
+      --card:#ffffff;
+      --ink:#1f2937;            /* slate-800 */
+      --muted:#6b7280;          /* slate-500 */
+      --accent:#10b981;         /* emerald */
+      --accent-2:#ef4444;       /* red */
+      --ring: rgba(16,185,129,.35);
+      --shadow: 0 6px 20px rgba(0,0,0,.12);
+      --radius: 16px;
+    }
+    *{box-sizing:border-box}
+    html,body{height:100%}
+    body{
+      margin:0; font-family: ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, Inter, Arial;
+      background:var(--bg); color:var(--ink);
+      display:flex; flex-direction:column;
+    }
+    header{
+      text-align:center; padding:24px 12px;
+    }
+    header h1{margin:0; font-size:clamp(24px,4vw,40px)}
+    header p{margin:.4rem 0 0; color:var(--muted)}
+
+    .wrap{width:min(1100px, 96vw); margin:0 auto 24px;}
+
+    .stats{
+      display:grid; grid-template-columns: repeat(4, minmax(0,1fr)); gap:12px;
+    }
+    .stat{
+      background:var(--card); border-radius:var(--radius); padding:14px 16px; box-shadow:var(--shadow);
+    }
+    .stat h3{margin:0 0 4px; font-size:12px; text-transform:uppercase; letter-spacing:.08em; color:var(--muted)}
+    .stat .val{font-weight:800; font-size:clamp(16px,3.2vw,24px)}
+
+    .bar{height:14px; background:#e5e7eb; border-radius:999px; overflow:hidden; margin-top:8px}
+    .bar > div{height:100%; background:var(--accent); width:0%}
+
+    .controls{display:flex; gap:8px; flex-wrap:wrap; margin:14px 0}
+    .controls input[type="search"]{
+      flex:1 1 280px; padding:12px 14px; border-radius:12px; border:1px solid #e5e7eb; outline:none;
+    }
+    .btn{appearance:none; border:0; padding:12px 14px; border-radius:12px; background:#111827; color:white; font-weight:700; cursor:pointer}
+    .btn.secondary{background:#e5e7eb; color:#111827}
+    .btn.danger{background:var(--accent-2)}
+
+    .grid{display:grid; grid-template-columns:repeat(auto-fit, minmax(220px,1fr)); gap:14px}
+    .card{
+      background:var(--card); border-radius:var(--radius); box-shadow:var(--shadow); padding:12px; display:flex; flex-direction:column; gap:10px;
+    }
+    .card .top{display:flex; align-items:center; gap:10px}
+    .emoji{font-size:28px}
+    .title{font-weight:800}
+    .price{color:var(--muted); font-size:14px}
+    .qty{color:var(--muted); font-size:13px}
+    .buyrow{display:flex; gap:8px; align-items:center}
+    .qty-input{width:86px; padding:8px 10px; border:1px solid #e5e7eb; border-radius:10px}
+    .buy{flex:1}
+    .pill{display:inline-block; padding:6px 10px; border-radius:999px; font-size:12px; background:#f3f4f6; color:#111827}
+
+    aside{
+      position:sticky; bottom:0; background:rgba(245,245,220,.85); backdrop-filter:saturate(1.1) blur(4px);
+      box-shadow:0 -8px 20px rgba(0,0,0,.08); padding:10px 0; margin-top:10px;
+    }
+    .cart{display:flex; gap:12px; flex-wrap:wrap; align-items:center; justify-content:space-between; width:min(1100px,96vw); margin:0 auto}
+    .cartlist{display:flex; gap:8px; flex-wrap:wrap}
+    .cartlist .item{background:var(--card); box-shadow:var(--shadow); border-radius:999px; padding:8px 12px; font-size:13px}
+    .link{color:#2563eb; text-decoration:none}
+
+    @media (max-width:720px){
+      .stats{grid-template-columns: repeat(2,minmax(0,1fr));}
+    }
+  </style>
+</head>
+<body>
+  <header>
+    <h1>Spend One Trillion Dollars</h1>
+    <p>Try to spend <strong>$1,000,000,000,000</strong>. Buy things below and watch your remaining budget drop.</p>
+  </header>
+
+  <div class="wrap">
+    <section class="stats" aria-live="polite">
+      <div class="stat"><h3>Total Budget</h3><div class="val" id="totalVal"></div></div>
+      <div class="stat"><h3>Spent</h3><div class="val" id="spentVal"></div><div class="bar"><div id="spentBar"></div></div></div>
+      <div class="stat"><h3>Remaining</h3><div class="val" id="leftVal"></div></div>
+      <div class="stat"><h3>Items Bought</h3><div class="val" id="itemsVal"></div></div>
+    </section>
+
+    <div class="controls">
+      <input id="search" type="search" placeholder="Search items… (e.g., house, plane, iPhone)" />
+      <button class="btn secondary" id="undoBtn" title="Undo last purchase">Undo</button>
+      <button class="btn danger" id="resetBtn" title="Clear everything">Reset</button>
+    </div>
+
+    <section class="grid" id="grid" aria-live="polite"></section>
+  </div>
+
+  <aside>
+    <div class="cart">
+      <div class="cartlist" id="cartList"></div>
+      <div style="display:flex; gap:8px; align-items:center;">
+        <span class="pill" id="shareHint">Saved locally</span>
+        <button class="btn" id="shareBtn">Share snapshot</button>
+      </div>
+    </div>
+  </aside>
+
+  <script>
+  // ========= Data =========
+  const ONE_TRILLION = 1_000_000_000_000;
+  const items = [
+    { id: 'iphone', emoji:'📱', name:'iPhone 15', price: 999 },
+    { id: 'ps5', emoji:'🎮', name:'PlayStation 5', price: 499 },
+    { id: 'laptop', emoji:'💻', name:'Gaming Laptop', price: 2200 },
+    { id: 'tv', emoji:'📺', name:'4K TV (65")', price: 800 },
+    { id: 'bike', emoji:'🚲', name:'Mountain Bike', price: 1500 },
+    { id: 'car', emoji:'🚗', name:'Family Car', price: 35_000 },
+    { id: 'supercar', emoji:'🏎️', name:'Supercar', price: 300_000 },
+    { id: 'house', emoji:'🏠', name:'House', price: 450_000 },
+    { id: 'mansion', emoji:'🏰', name:'Mansion', price: 12_000_000 },
+    { id: 'privatejet', emoji:'✈️', name:'Private Jet', price: 50_000_000 },
+    { id: 'yacht', emoji:'🛥️', name:'Luxury Yacht', price: 75_000_000 },
+    { id: 'stadium', emoji:'🏟️', name:'Build a Stadium', price: 900_000_000 },
+    { id: 'island', emoji:'🏝️', name:'Buy a Private Island', price: 25_000_000 },
+    { id: 'company', emoji:'🏢', name:'Buy a Medium Company', price: 2_000_000_000 },
+    { id: 'moon', emoji:'🌕', name:'Moon Mission', price: 6_000_000_000 },
+    { id: 'rail', emoji:'🚄', name:'High-speed Rail (city)', price: 12_000_000_000 },
+    { id: 'charity', emoji:'🤝', name:'Donate to Charity', price: 1_000_000 },
+    { id: 'college', emoji:'🎓', name:'College Scholarships (1000 students)', price: 50_000_000 },
+    { id: 'hospital', emoji:'🏥', name:'Build a Hospital', price: 300_000_000 },
+  ];
+
+  // ========= State =========
+  let state = {
+    total: ONE_TRILLION,
+    spent: 0,
+    cart: {},       // id -> qty
+    history: [],    // stack of actions for undo
+  };
+
+  // Restore
+  try{
+    const saved = JSON.parse(localStorage.getItem('spendTrillionV1'));
+    if(saved && saved.total === ONE_TRILLION){ state = saved; }
+  }catch{ /* ignore */ }
+
+  // ========= Helpers =========
+  const $ = sel => document.querySelector(sel);
+  const fmt = n => n.toLocaleString(undefined,{maximumFractionDigits:0});
+  const money = n => `$${fmt(n)}`;
+
+  function persist(){
+    localStorage.setItem('spendTrillionV1', JSON.stringify(state));
+    $('#shareHint').textContent = 'Saved locally';
+  }
+
+  function canAfford(cost){ return state.total - state.spent >= cost; }
+
+  // ========= Render =========
+  function renderStats(){
+    $('#totalVal').textContent = money(state.total);
+    $('#spentVal').textContent = money(state.spent);
+    $('#leftVal').textContent  = money(state.total - state.spent);
+    $('#itemsVal').textContent = Object.values(state.cart).reduce((a,b)=>a+b,0);
+    const pct = Math.min(100, (state.spent/state.total)*100);
+    $('#spentBar').style.width = pct + '%';
+  }
+
+  function renderCartPills(){
+    const c = $('#cartList');
+    c.innerHTML = '';
+    for(const it of items){
+      const q = state.cart[it.id]||0; if(!q) continue;
+      const pill = document.createElement('span');
+      pill.className = 'item';
+      pill.textContent = `${it.emoji} ${it.name} × ${q}`;
+      c.appendChild(pill);
+    }
+  }
+
+  function renderGrid(filter=''){
+    const g = $('#grid');
+    g.innerHTML = '';
+    const q = filter.trim().toLowerCase();
+    for(const it of items){
+      if(q && !(`${it.name} ${it.id}`).toLowerCase().includes(q)) continue;
+      const qty = state.cart[it.id]||0;
+      const card = document.createElement('article');
+      card.className = 'card';
+      card.innerHTML = `
+        <div class="top">
+          <div class="emoji" aria-hidden="true">${it.emoji}</div>
+          <div style="flex:1">
+            <div class="title">${it.name}</div>
+            <div class="price">${money(it.price)} each</div>
+            ${qty?`<div class="qty">In cart: <strong>${fmt(qty)}</strong></div>`:''}
+          </div>
+          <span class="pill">Max: ${fmt(Math.floor((state.total-state.spent)/it.price))}</span>
+        </div>
+        <div class="buyrow">
+          <!-- Start at 0 instead of 1; allow 0 -->
+          <input class="qty-input" type="number" min="0" step="1" value="0" aria-label="Quantity for ${it.name}">
+          <button class="btn buy">Buy</button>
+          <button class="btn secondary max">Max</button>
+        </div>
+      `;
+      const [qtyInput, buyBtn, maxBtn] = card.querySelectorAll('.qty-input, .buy, .max');
+
+      buyBtn.addEventListener('click', ()=>{
+        // Do nothing if qty <= 0 (no accidental purchase of 1)
+        const nRaw = Math.floor(Number(qtyInput.value));
+        const n = isNaN(nRaw) ? 0 : nRaw;
+        if(n <= 0) return;
+
+        const cost = n * it.price;
+        if(!canAfford(cost)){
+          // a tiny shake to indicate error
+          buyBtn.animate(
+            [{ transform:'translateX(0)' },{ transform:'translateX(-4px)' },{ transform:'translateX(4px)' },{ transform:'translateX(0)' }],
+            { duration:220 }
+          );
+          return;
+        }
+        state.spent += cost;
+        state.cart[it.id] = (state.cart[it.id]||0) + n;  // accumulate
+        state.history.push({type:'buy', id:it.id, n, cost});
+        persist(); renderStats(); renderCartPills(); renderGrid($('#search').value);
+      });
+
+      maxBtn.addEventListener('click', ()=>{
+        const n = Math.floor((state.total-state.spent)/it.price);
+        if(n<=0) return;
+        state.spent += n*it.price;
+        state.cart[it.id] = (state.cart[it.id]||0)+n;     // accumulate
+        state.history.push({type:'buy', id:it.id, n, cost:n*it.price});
+        persist(); renderStats(); renderCartPills(); renderGrid($('#search').value);
+      });
+
+      g.appendChild(card);
+    }
+  }
+
+  // ========= Events =========
+  $('#search').addEventListener('input', e=> renderGrid(e.target.value));
+
+  $('#undoBtn').addEventListener('click', ()=>{
+    const last = state.history.pop();
+    if(!last) return;
+    if(last.type==='buy'){
+      state.spent -= last.cost;
+      state.cart[last.id] = (state.cart[last.id]||0) - last.n;
+      if(state.cart[last.id] <= 0) delete state.cart[last.id];
+    }
+    persist(); renderStats(); renderCartPills(); renderGrid($('#search').value);
+  });
+
+  $('#resetBtn').addEventListener('click', ()=>{
+    if(!confirm('Reset everything and start over?')) return;
+    state = { total: ONE_TRILLION, spent:0, cart:{}, history:[] };
+    persist(); renderStats(); renderCartPills(); renderGrid($('#search').value);
+  });
+
+  $('#shareBtn').addEventListener('click', ()=>{
+    const payload = {spent: state.spent, cart: state.cart};
+    const blob = new Blob([JSON.stringify(payload,null,2)], {type:'application/json'});
+    const url = URL.createObjectURL(blob);
+    const a = Object.assign(document.createElement('a'), {href:url, download:'spend-trillion-snapshot.json'});
+    a.click(); URL.revokeObjectURL(url);
+    $('#shareHint').textContent = 'Snapshot downloaded';
+  });
+
+  // ========= Init =========
+  renderStats(); renderCartPills(); renderGrid('');
+  </script>
+</body>
+</html>

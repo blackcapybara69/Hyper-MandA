@@ -1,0 +1,338 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <title>Population Counter — Top 50 + World & Continents</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <style>
+    :root {
+      --bg-color: #f2f2f2;
+      --card: #ffffff;
+      --text-color: #000;
+      --muted: #666;
+      --accent: #0ea5e9;
+      --good: #16a34a;
+      --border: #e5e5e5;
+      --shadow: 0 8px 24px rgba(0,0,0,.08);
+    }
+    [data-theme="dark"] {
+      --bg-color: #0f172a;
+      --card: #111827;
+      --text-color: #e5e7eb;
+      --muted: #9ca3af;
+      --accent: #22d3ee;
+      --good: #22c55e;
+      --border: #1f2937;
+      --shadow: 0 6px 20px rgba(0,0,0,.35);
+    }
+
+    * { box-sizing: border-box }
+    html, body { height: 100% }
+    body {
+      margin: 0;
+      font-family: Arial, Helvetica, sans-serif;
+      background: var(--bg-color);
+      color: var(--text-color);
+      transition: background .3s, color .3s;
+    }
+
+    header {
+      display: flex; align-items: center; justify-content: space-between;
+      padding: 18px 20px; position: sticky; top: 0; background: var(--bg-color);
+      border-bottom: 1px solid var(--border); z-index: 10;
+    }
+    header h1 { margin: 0; font-size: clamp(20px, 3vw, 28px); }
+    header .sub { color: var(--muted); font-size: 14px }
+
+    #theme-toggle {
+      background: var(--good);
+      border: none; border-radius: 999px; padding: 10px 14px;
+      cursor: pointer; font-size: 1.1em; color: white;
+      box-shadow: var(--shadow);
+      user-select: none;
+    }
+
+    .layout {
+      display: grid;
+      grid-template-columns: 1fr min(360px, 92vw);
+      gap: 16px; padding: 16px; max-width: 1400px; margin: 0 auto;
+    }
+    @media (max-width: 980px) {
+      .layout { grid-template-columns: 1fr; }
+      aside { position: static; top: auto; }
+    }
+
+    main {
+      background: transparent;
+    }
+
+    .card {
+      background: var(--card);
+      border: 1px solid var(--border);
+      border-radius: 14px;
+      box-shadow: var(--shadow);
+    }
+
+    /* Sidebar */
+    aside { position: sticky; top: 76px; height: fit-content; }
+    .side-wrap { display: grid; gap: 12px; }
+    .bignum { font-size: clamp(24px, 4.6vw, 36px); font-weight: 800; }
+    .muted { color: var(--muted); }
+    .row { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 12px; }
+    .row + .row { border-top: 1px dashed var(--border) }
+    .pad { padding: 14px 16px; }
+    .title { font-weight: 800; font-size: 14px; letter-spacing: .04em; text-transform: uppercase; color: var(--muted) }
+
+    /* Table */
+    .table-wrap { overflow: auto; }
+    table {
+      width: 100%; border-collapse: collapse;
+    }
+    thead th {
+      position: sticky; top: 0;
+      background: var(--card);
+      border-bottom: 1px solid var(--border);
+      text-align: left; font-size: 12px; text-transform: uppercase; letter-spacing: .06em; color: var(--muted);
+      padding: 10px;
+    }
+    tbody td {
+      padding: 12px 10px; border-bottom: 1px solid var(--border); vertical-align: middle;
+    }
+    tbody tr:hover { background: rgba(34,211,238,0.06) }
+    .rank { width: 70px; }
+    .flag { width: 22px; height: 16px; object-fit: cover; border: 1px solid var(--border); border-radius: 2px; margin-right: 8px; }
+    .country-cell { display: flex; align-items: center; gap: 8px; }
+    .growth { color: var(--good); font-weight: 700; }
+
+    .legend { padding: 8px 12px; font-size: 12px; color: var(--muted) }
+  </style>
+</head>
+<body>
+  <header>
+    <div>
+      <h1>Live Population Dashboard</h1>
+      <div class="sub">Top 50 countries • World & continents • Worldometer-style simulation</div>
+    </div>
+    <button id="theme-toggle" aria-label="Toggle Light/Dark Mode">🌙</button>
+  </header>
+
+  <div class="layout">
+    <main>
+      <div class="card table-wrap">
+        <div class="pad">
+          <div class="title">Top 50 Countries</div>
+          <div class="legend">Shows rank, live population, and today’s growth (simulated at ~1s updates). Numbers are approximations.</div>
+        </div>
+        <table id="country-table" aria-live="polite">
+          <thead>
+            <tr>
+              <th class="rank">Rank</th>
+              <th>Country</th>
+              <th>Live Population</th>
+              <th>Today’s Growth</th>
+            </tr>
+          </thead>
+          <tbody></tbody>
+        </table>
+      </div>
+    </main>
+
+    <aside>
+      <div class="side-wrap">
+        <div class="card pad">
+          <div class="title">World Live Population</div>
+          <div id="worldLive" class="bignum">—</div>
+          <div class="muted" id="worldSince">Base: Jan 1, 2025</div>
+        </div>
+
+        <div class="card">
+          <div class="pad title">Continents (Live)</div>
+          <div class="row"><div>Asia</div><strong id="asiaLive">—</strong></div>
+          <div class="row"><div>Africa</div><strong id="africaLive">—</strong></div>
+          <div class="row"><div>Europe</div><strong id="europeLive">—</strong></div>
+          <div class="row"><div>North America</div><strong id="naLive">—</strong></div>
+          <div class="row"><div>South America</div><strong id="saLive">—</strong></div>
+          <div class="row"><div>Oceania</div><strong id="oceaniaLive">—</strong></div>
+          <div class="row"><div>Antarctica</div><strong id="antarcticaLive">—</strong></div>
+        </div>
+
+        <div class="card">
+          <div class="pad title">Global Growth</div>
+          <div class="row"><div>Today’s Growth</div><div class="growth" id="todayGrowth">+—</div></div>
+          <div class="row"><div>2025 Growth (to now)</div><div class="growth" id="ytdGrowth">+—</div></div>
+        </div>
+      </div>
+    </aside>
+  </div>
+
+  <script>
+    // ========= Utilities =========
+    const $ = sel => document.querySelector(sel);
+    const fmt = (n) => Number(n).toLocaleString('en-US');
+    const suffix = (n) => {
+      const s = ["th","st","nd","rd"], v = n % 100;
+      return n + (s[(v-20)%10] || s[v] || s[0]);
+    };
+    // Clamp rate helper to avoid negatives breaking UI
+    const rateFromSeconds = (secondsPerPerson) => secondsPerPerson > 0 ? (1 / secondsPerPerson) : 0;
+
+    // ========= Base anchors =========
+    // Use your local timezone clock; anchor to a fixed base time so values are consistent between reloads.
+    const baseTime = new Date("2025-07-09T20:55:00"); // same style as your India anchor
+    const now = () => new Date();
+
+    // ========= World & Continents (independent from table) =========
+    // These are broad approximations to make the counters feel Worldometer-like.
+    // You can tweak these bases/rates at any time.
+    const world = {
+      base: 8110000000,            // world base pop near 2025
+      ratePerSec: 2.1              // net +2.1 people per second (approx)
+    };
+    const continents = [
+      { id: "asiaLive",       name: "Asia",          base: 4780000000, ratePerSec: 1.0 },
+      { id: "africaLive",     name: "Africa",        base: 1480000000, ratePerSec: 0.90 },
+      { id: "europeLive",     name: "Europe",        base: 742000000,  ratePerSec: -0.05 },
+      { id: "naLive",         name: "North America", base: 604000000,  ratePerSec: 0.15 },
+      { id: "saLive",         name: "South America", base: 440000000,  ratePerSec: 0.08 },
+      { id: "oceaniaLive",    name: "Oceania",       base: 46000000,   ratePerSec: 0.01 },
+      { id: "antarcticaLive", name: "Antarctica",    base: 1100,       ratePerSec: 0.0 },
+    ];
+
+    // ========= Top 50 countries =========
+    // For each: rank, name, flag URL, basePop, secondsPerNewPerson (approx), continent
+    // Seconds per person => higher = slower growth; can be >1000 if very slow/negative net growth; we clamp negatives to zero for a friendly display.
+    const countries = [
+      { rank:1,  name:"India",        flag:"https://upload.wikimedia.org/wikipedia/en/4/41/Flag_of_India.svg",        base:1464135400, spp:2.5,  continent:"Asia" },
+      { rank:2,  name:"China",        flag:"https://upload.wikimedia.org/wikipedia/commons/f/fa/Flag_of_the_People%27s_Republic_of_China.svg",  base:1416000000, spp:6.0,  continent:"Asia" },
+      { rank:3,  name:"United States",flag:"https://upload.wikimedia.org/wikipedia/en/a/a4/Flag_of_the_United_States.svg", base:341800000, spp:5.2, continent:"North America" },
+      { rank:4,  name:"Indonesia",    flag:"https://upload.wikimedia.org/wikipedia/commons/9/9f/Flag_of_Indonesia.svg", base:283000000, spp:3.0, continent:"Asia" },
+      { rank:5,  name:"Pakistan",     flag:"https://upload.wikimedia.org/wikipedia/commons/3/32/Flag_of_Pakistan.svg", base:245000000, spp:2.2, continent:"Asia" },
+      { rank:6,  name:"Nigeria",      flag:"https://upload.wikimedia.org/wikipedia/commons/7/79/Flag_of_Nigeria.svg", base:229000000, spp:1.75,continent:"Africa" },
+      { rank:7,  name:"Brazil",       flag:"https://upload.wikimedia.org/wikipedia/en/0/05/Flag_of_Brazil.svg",       base:216000000, spp:6.2, continent:"South America" },
+      { rank:8,  name:"Bangladesh",   flag:"https://upload.wikimedia.org/wikipedia/commons/f/f9/Flag_of_Bangladesh.svg", base:173000000, spp:3.3, continent:"Asia" },
+      { rank:9,  name:"Russia",       flag:"https://upload.wikimedia.org/wikipedia/en/f/f3/Flag_of_Russia.svg",       base:146000000, spp:20.0,continent:"Europe" },
+      { rank:10, name:"Mexico",       flag:"https://upload.wikimedia.org/wikipedia/commons/f/fc/Flag_of_Mexico.svg",  base:134000000, spp:5.8, continent:"North America" },
+      { rank:11, name:"Ethiopia",     flag:"https://upload.wikimedia.org/wikipedia/commons/7/71/Flag_of_Ethiopia.svg", base:132000000, spp:2.2, continent:"Africa" },
+      { rank:12, name:"Japan",        flag:"https://upload.wikimedia.org/wikipedia/en/9/9e/Flag_of_Japan.svg",        base:123000000, spp:15.0,continent:"Asia" },
+      { rank:13, name:"Philippines",  flag:"https://upload.wikimedia.org/wikipedia/commons/9/99/Flag_of_the_Philippines.svg", base:118000000, spp:3.4, continent:"Asia" },
+      { rank:14, name:"Egypt",        flag:"https://upload.wikimedia.org/wikipedia/commons/f/fe/Flag_of_Egypt.svg",   base:112000000, spp:3.2, continent:"Africa" },
+      { rank:15, name:"Vietnam",      flag:"https://upload.wikimedia.org/wikipedia/commons/2/21/Flag_of_Vietnam.svg", base:100000000, spp:6.0, continent:"Asia" },
+      { rank:16, name:"DR Congo",     flag:"https://upload.wikimedia.org/wikipedia/commons/6/6f/Flag_of_the_Democratic_Republic_of_the_Congo.svg", base:108000000, spp:2.0, continent:"Africa" },
+      { rank:17, name:"Turkey",       flag:"https://upload.wikimedia.org/wikipedia/commons/b/b4/Flag_of_Turkey.svg",  base:89000000,  spp:7.0, continent:"Asia" },
+      { rank:18, name:"Iran",         flag:"https://upload.wikimedia.org/wikipedia/commons/c/ca/Flag_of_Iran.svg",    base:89000000,  spp:7.2, continent:"Asia" },
+      { rank:19, name:"Germany",      flag:"https://upload.wikimedia.org/wikipedia/en/b/ba/Flag_of_Germany.svg",      base:84000000,  spp:18.0,continent:"Europe" },
+      { rank:20, name:"Thailand",     flag:"https://upload.wikimedia.org/wikipedia/commons/a/a9/Flag_of_Thailand.svg", base:71000000, spp:8.0, continent:"Asia" },
+      { rank:21, name:"United Kingdom", flag:"https://upload.wikimedia.org/wikipedia/en/a/ae/Flag_of_the_United_Kingdom.svg", base:69000000, spp:9.0, continent:"Europe" },
+      { rank:22, name:"France",       flag:"https://upload.wikimedia.org/wikipedia/en/c/c3/Flag_of_France.svg",       base:65000000,  spp:10.0,continent:"Europe" },
+      { rank:23, name:"Italy",        flag:"https://upload.wikimedia.org/wikipedia/en/0/03/Flag_of_Italy.svg",        base:59000000,  spp:16.0,continent:"Europe" },
+      { rank:24, name:"South Africa", flag:"https://upload.wikimedia.org/wikipedia/commons/a/af/Flag_of_South_Africa.svg", base:62000000, spp:6.0, continent:"Africa" },
+      { rank:25, name:"Tanzania",     flag:"https://upload.wikimedia.org/wikipedia/commons/3/38/Flag_of_Tanzania.svg", base:67000000, spp:3.0, continent:"Africa" },
+      { rank:26, name:"Myanmar",      flag:"https://upload.wikimedia.org/wikipedia/commons/8/8c/Flag_of_Myanmar.svg", base:55000000,  spp:7.5, continent:"Asia" },
+      { rank:27, name:"Kenya",        flag:"https://upload.wikimedia.org/wikipedia/commons/4/49/Flag_of_Kenya.svg",   base:58000000,  spp:3.2, continent:"Africa" },
+      { rank:28, name:"South Korea",  flag:"https://upload.wikimedia.org/wikipedia/commons/0/09/Flag_of_South_Korea.svg", base:51000000, spp:30.0, continent:"Asia" },
+      { rank:29, name:"Colombia",     flag:"https://upload.wikimedia.org/wikipedia/commons/2/21/Flag_of_Colombia.svg", base:52000000, spp:8.5, continent:"South America" },
+      { rank:30, name:"Spain",        flag:"https://upload.wikimedia.org/wikipedia/en/9/9a/Flag_of_Spain.svg",        base:48000000,  spp:14.0,continent:"Europe" },
+      { rank:31, name:"Uganda",       flag:"https://upload.wikimedia.org/wikipedia/commons/4/4e/Flag_of_Uganda.svg",  base:49000000,  spp:2.6, continent:"Africa" },
+      { rank:32, name:"Argentina",    flag:"https://upload.wikimedia.org/wikipedia/commons/1/1a/Flag_of_Argentina.svg", base:46000000, spp:10.0, continent:"South America" },
+      { rank:33, name:"Algeria",      flag:"https://upload.wikimedia.org/wikipedia/commons/7/77/Flag_of_Algeria.svg", base:45000000,  spp:8.5, continent:"Africa" },
+      { rank:34, name:"Sudan",        flag:"https://upload.wikimedia.org/wikipedia/commons/0/01/Flag_of_Sudan.svg",   base:46000000,  spp:6.5, continent:"Africa" },
+      { rank:35, name:"Iraq",         flag:"https://upload.wikimedia.org/wikipedia/commons/f/f6/Flag_of_Iraq.svg",    base:45000000,  spp:6.2, continent:"Asia" },
+      { rank:36, name:"Ukraine",      flag:"https://upload.wikimedia.org/wikipedia/commons/4/49/Flag_of_Ukraine.svg", base:36000000,  spp:40.0,continent:"Europe" },
+      { rank:37, name:"Poland",       flag:"https://upload.wikimedia.org/wikipedia/en/1/12/Flag_of_Poland.svg",       base:38000000,  spp:35.0,continent:"Europe" },
+      { rank:38, name:"Canada",       flag:"https://upload.wikimedia.org/wikipedia/commons/c/cf/Flag_of_Canada.svg",  base:40000000,  spp:14.0,continent:"North America" },
+      { rank:39, name:"Morocco",      flag:"https://upload.wikimedia.org/wikipedia/commons/2/2c/Flag_of_Morocco.svg", base:38000000,  spp:10.5,continent:"Africa" },
+      { rank:40, name:"Saudi Arabia", flag:"https://upload.wikimedia.org/wikipedia/commons/0/0d/Flag_of_Saudi_Arabia.svg", base:36000000, spp:8.2, continent:"Asia" },
+      { rank:41, name:"Uzbekistan",   flag:"https://upload.wikimedia.org/wikipedia/commons/8/84/Flag_of_Uzbekistan.svg", base:36000000, spp:9.2, continent:"Asia" },
+      { rank:42, name:"Peru",         flag:"https://upload.wikimedia.org/wikipedia/commons/c/cf/Flag_of_Peru.svg",    base:34000000,  spp:12.0,continent:"South America" },
+      { rank:43, name:"Malaysia",     flag:"https://upload.wikimedia.org/wikipedia/commons/6/66/Flag_of_Malaysia.svg", base:34000000, spp:11.0,continent:"Asia" },
+      { rank:44, name:"Afghanistan",  flag:"https://upload.wikimedia.org/wikipedia/commons/5/5c/Flag_of_Afghanistan_%282021%E2%80%93present%29.svg", base:41000000, spp:4.2, continent:"Asia" },
+      { rank:45, name:"Angola",       flag:"https://upload.wikimedia.org/wikipedia/commons/9/9d/Flag_of_Angola.svg",  base:37000000,  spp:4.0, continent:"Africa" },
+      { rank:46, name:"Ghana",        flag:"https://upload.wikimedia.org/wikipedia/commons/1/19/Flag_of_Ghana.svg",   base:34000000,  spp:5.0, continent:"Africa" },
+      { rank:47, name:"Mozambique",   flag:"https://upload.wikimedia.org/wikipedia/commons/d/d0/Flag_of_Mozambique.svg", base:34000000, spp:4.5, continent:"Africa" },
+      { rank:48, name:"Yemen",        flag:"https://upload.wikimedia.org/wikipedia/commons/8/89/Flag_of_Yemen.svg",   base:34000000,  spp:4.8, continent:"Asia" },
+      { rank:49, name:"Nepal",        flag:"https://upload.wikimedia.org/wikipedia/commons/9/9b/Flag_of_Nepal.svg",   base:31000000,  spp:10.0,continent:"Asia" },
+      { rank:50, name:"Madagascar",   flag:"https://upload.wikimedia.org/wikipedia/commons/b/bc/Flag_of_Madagascar.svg", base:30000000, spp:5.0, continent:"Africa" },
+    ];
+
+    // ========= Build table =========
+    const tbody = document.querySelector("#country-table tbody");
+
+    function buildRows() {
+      tbody.innerHTML = '';
+      for (const c of countries) {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td class="rank">${suffix(c.rank)}</td>
+          <td class="country-cell">
+            <img class="flag" alt="${c.name} flag" src="${c.flag}">
+            <span>${c.name}</span>
+          </td>
+          <td data-k="live"></td>
+          <td class="growth" data-k="today"></td>
+        `;
+        tbody.appendChild(tr);
+        c._row = tr;
+      }
+    }
+    buildRows();
+
+    // ========= Update loop =========
+    function updateAll() {
+      const tNow = now();
+      const secondsElapsed = (tNow - baseTime) / 1000;
+
+      // Today window
+      const midnight = new Date(tNow);
+      midnight.setHours(0,0,0,0);
+      const secondsSinceMidnight = (tNow - midnight) / 1000;
+
+      // YTD window (from Jan 1, 2025 local)
+      const ytdStart = new Date("2025-01-01T00:00:00");
+      const secondsSinceYTD = Math.max(0, (tNow - ytdStart) / 1000);
+
+      // Countries
+      for (const c of countries) {
+        const rate = rateFromSeconds(c.spp); // net persons per second
+        const live = Math.floor(c.base + rate * secondsElapsed);
+        const today = Math.floor(rate * secondsSinceMidnight);
+        c._row.querySelector('[data-k="live"]').textContent = fmt(live);
+        c._row.querySelector('[data-k="today"]').textContent = `+${fmt(today)}`;
+      }
+
+      // World
+      const worldLive = Math.floor(world.base + world.ratePerSec * secondsSinceYTD); // grow from Jan 1 for nice continuity
+      $('#worldLive').textContent = fmt(worldLive);
+
+      // Continents
+      for (const cont of continents) {
+        const live = Math.floor(cont.base + cont.ratePerSec * secondsSinceYTD);
+        $(`#${cont.id}`).textContent = fmt(live);
+      }
+
+      // Growth cards
+      const todaysGrowth = Math.floor(world.ratePerSec * secondsSinceMidnight);
+      const ytdGrowth    = Math.floor(world.ratePerSec * secondsSinceYTD);
+      $('#todayGrowth').textContent = `+${fmt(todaysGrowth)}`;
+      $('#ytdGrowth').textContent   = `+${fmt(ytdGrowth)}`;
+    }
+
+    updateAll();
+    setInterval(updateAll, 1000);
+
+    // ========= Theme Toggle (kept from your favorite setup) =========
+    const toggleBtn = document.getElementById("theme-toggle");
+    const savedTheme = localStorage.getItem("theme") || "light";
+    document.documentElement.setAttribute("data-theme", savedTheme);
+    toggleBtn.textContent = savedTheme === "dark" ? "☀️" : "🌙";
+
+    toggleBtn.addEventListener("click", () => {
+      const currentTheme = document.documentElement.getAttribute("data-theme");
+      const newTheme = currentTheme === "dark" ? "light" : "dark";
+      document.documentElement.setAttribute("data-theme", newTheme);
+      localStorage.setItem("theme", newTheme);
+      toggleBtn.textContent = newTheme === "dark" ? "☀️" : "🌙";
+    });
+    
+  </script>
+</body>
+</html>
