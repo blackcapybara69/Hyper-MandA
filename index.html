@@ -1,24 +1,72 @@
 <!DOCTYPE html>
-<html>
+<html lang="en" data-theme="light">
 <head>
-  <link type="image/png" sizes="16x16" rel="icon" href=".../icons8-linux mint-color-16.png">
   <meta charset="utf-8">
   <title>MandA.com</title>
-  <!-- Links to load the Poppins font from Google Fonts -->
-  <link rel="preconnect" href="https://fonts.googleapis.com">
-  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-  <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@700&display=swap" rel="stylesheet">
+
+  <!-- Google Fonts -->
+  <link href="https://fonts.googleapis.com/css2?family=Open+Sans:wght@700&family=Zalando+Sans:wght@400;500&display=swap" rel="stylesheet">
+
   <style>
-    body {
-      background-color: #def3ff;
-      margin: 0;
-      font-family: Arial, sans-serif;
+    :root {
+      /* Light colors */
+      --celadon: #99e2b4ff;
+      --celadon-2: #88d4abff;
+      --mint: #78c6a3ff;
+      --mint-2: #67b99aff;
+      --zomp: #56ab91ff;
+      --zomp-2: #469d89ff;
+      --viridian: #358f80ff;
+      --pine-green: #248277ff;
+      --skobeloff: #14746fff;
+      --caribbean-current: #036666ff;
+
+      /* Dark colors */
+      --true-blue: #0466c8ff;
+      --sapphire: #0353a4ff;
+      --yale-blue: #023e7dff;
+      --oxford-blue: #002855ff;
+      --oxford-blue-2: #001845ff;
+      --oxford-blue-3: #001233ff;
+      --delft-blue: #33415cff;
+      --paynes-gray: #5c677dff;
+      --slate-gray: #7d8597ff;
+      --cool-gray: #979dacff;
+
+      /* Theme defaults (light) */
+      --background: var(--celadon);
+      --card-bg: #e0e0e0;
+      --primary: var(--mint);
+      --secondary: var(--zomp);
+      --text: #222;
+
+      --font-title: 'Open Sans', sans-serif;
+      --font-body: 'Zalando Sans', sans-serif;
+      --radius: 12px;
+      --spacing: 1rem;
     }
-    .Domain {
+
+    [data-theme="dark"] {
+      --background: var(--oxford-blue);
+      --card-bg: var(--oxford-blue-2);
+      --primary: var(--true-blue);
+      --secondary: var(--sapphire);
+      --text: var(--cool-gray);
+    }
+
+    body {
+      background-color: var(--background);
+      color: var(--text);
+      font-family: var(--font-body);
+      margin: 0;
+      padding: var(--spacing);
+      transition: all 0.3s ease;
+    }
+
+    h1, h3 {
+      font-family: var(--font-title);
       text-align: center;
-      margin-top: 20px;
-      /* Apply Poppins font to elements with the 'Domain' class */
-      font-family: 'Poppins', sans-serif;
+      margin: 0.5em 0;
     }
 
     .game-grid {
@@ -31,9 +79,9 @@
     }
 
     .game-card {
-      background-color: #e0e0e0;
-      border-radius: 12px;
-      box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+      background-color: var(--card-bg);
+      border-radius: var(--radius);
+      box-shadow: 0 4px 8px rgba(0,0,0,0.2);
       overflow: hidden;
       text-align: center;
       transition: transform 0.2s ease, box-shadow 0.2s ease;
@@ -44,7 +92,7 @@
 
     .game-card:hover {
       transform: scale(1.05);
-      box-shadow: 0 6px 12px rgba(0, 0, 0, 0.3);
+      box-shadow: 0 6px 12px rgba(0,0,0,0.3);
     }
 
     .game-card img {
@@ -61,24 +109,50 @@
 
     .Youtube {
       display: block;
-      margin: 30px auto;
+      margin: 20px auto;
       padding: 10px 20px;
       font-size: 16px;
       cursor: pointer;
-      background-color: white;
+      background-color: var(--primary);
       border: none;
       border-radius: 6px;
+      color: #fff;
       text-decoration: none;
+      transition: background 0.3s ease;
     }
 
     .Youtube:hover {
-      background-color: #1697d3;
+      background-color: var(--secondary);
+    }
+
+    #android {
+      display: flex;
+      justify-content: center;
+      align-items: center;
+    }
+
+    #theme-toggle {
+      display: block;
+      margin: 10px auto;
+      padding: 10px 20px;
+      border: none;
+      border-radius: 6px;
+      cursor: pointer;
+      background-color: var(--secondary);
+      color: #fff;
+      font-family: var(--font-body);
+    }
+    #theme-toggle:hover {
+      background-color: var(--primary);
     }
   </style>
 </head>
 <body>
+  <button id="theme-toggle">Toggle Dark/Light</button>
+
   <h1 class="Domain">MandA.com</h1>
   <h3 class="Domain">The Best Website To Play Games!</h3>
+
   <div class="game-grid">
     <a href="Spend 1 trillion dollars.html" class="game-card">
       <img src="https://cdn.pixabay.com/photo/2023/03/28/01/10/money-7881948_1280.jpg" alt="Spend One Trillion Dollars">
@@ -116,15 +190,16 @@
     </a>
   </div>
 
-  <a href="https://www.youtube.com/@ThatsPerfect-y4o">
-    <button class="Youtube">That's Perfect</button>
+  <a href="https://www.youtube.com/@ThatsPerfect-y4o"><button class="Youtube">That's Perfect</button></a>
+  <a href="https://www.youtube.com/@broskiwhy"><button class="Youtube">BroskiWhy</button></a>
+  <a href="Donation.html"><button class="Youtube">Donations</button></a>
 
-  </a>
-  <a href="https://www.youtube.com/@broskiwhy">
-    <button class="Youtube">BroskiWhy</button>
-  </a>
-  <a href="Donation.html">
-    <button class="Youtube">Donations</button>
-  </a>
+  <script>
+    const toggleBtn = document.getElementById('theme-toggle');
+    toggleBtn.addEventListener('click', () => {
+      document.documentElement.dataset.theme =
+        document.documentElement.dataset.theme === 'light' ? 'dark' : 'light';
+    });
+  </script>
 </body>
 </html>
