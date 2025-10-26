@@ -1,0 +1,142 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Color Dash Tech Edition</title>
+<style>
+  body { margin:0; overflow:hidden; background:#222; font-family:Arial,sans-serif; color:white; text-align:center; }
+  canvas { display:block; margin:0 auto; background: linear-gradient(#333,#111); }
+  #score { position:absolute; top:10px; left:50%; transform:translateX(-50%); font-size:24px; }
+</style>
+</head>
+<body>
+<div id="score">Score: 0</div>
+<canvas id="gameCanvas" width="600" height="800"></canvas>
+<script>
+const canvas = document.getElementById('gameCanvas');
+const ctx = canvas.getContext('2d');
+
+let techLogos = [];
+const logoUrls = [
+  'https://img.icons8.com/color/96/000000/facebook-new.png',
+  'https://img.icons8.com/color/96/000000/apple-logo.png',
+  'https://img.icons8.com/color/96/000000/android-os.png',
+  'https://img.icons8.com/color/96/000000/google-logo.png',
+  'https://img.icons8.com/color/96/000000/microsoft.png',
+  'https://img.icons8.com/color/96/000000/amazon.png',
+  'https://img.icons8.com/color/96/000000/tesla.png'
+];
+
+let initialPlayer = { x:280, y:700, size:60, speed:6, logoIndex:0 };
+let player = { ...initialPlayer };
+let obstacles = [];
+let score = 0;
+let gameOver = false;
+let imagesReady = false;
+
+let keys = {};
+window.addEventListener('keydown', e => keys[e.key.toLowerCase()] = true);
+window.addEventListener('keyup', e => keys[e.key.toLowerCase()] = false);
+
+canvas.addEventListener('click', () => {
+  if(imagesReady){
+    player.logoIndex = (player.logoIndex + 1) % techLogos.length;
+  }
+});
+
+function preloadLogos(callback){
+  let loadedCount = 0;
+  techLogos = [];
+
+  logoUrls.forEach(url => {
+    const img = new Image();
+    img.crossOrigin = 'anonymous';
+    img.src = url;
+    img.onload = () => {
+      loadedCount++;
+      if(loadedCount === logoUrls.length){
+        imagesReady = true;
+        callback();
+      }
+    };
+    img.onerror = () => {
+      console.error('Failed to load image:', url);
+      loadedCount++;
+      if(loadedCount === logoUrls.length){
+        imagesReady = true;
+        callback();
+      }
+    };
+    techLogos.push(img);
+  });
+}
+
+function spawnObstacle(){
+  if(gameOver || !imagesReady) return;
+  let x = Math.random() * (canvas.width - 60);
+  let logoIndex;
+
+  do {
+    logoIndex = Math.floor(Math.random() * techLogos.length);
+  } while (!techLogos[logoIndex].complete);
+
+  let speed = 6 + Math.random() * 4;
+  obstacles.push({ x, y: -60, size: 60, speed, logoIndex });
+}
+
+function resetGame(){
+  player = { ...initialPlayer };
+  obstacles = [];
+  score = 0;
+  gameOver = false;
+  document.getElementById('score').innerText = 'Score: 0';
+}
+
+function update(){
+  if(gameOver || !imagesReady) return;
+  if(keys['a'] && player.x > 0) player.x -= player.speed;
+  if(keys['d'] && player.x < canvas.width - player.size) player.x += player.speed;
+
+  obstacles = obstacles.filter(o => {
+    o.y += o.speed;
+    if(o.y > canvas.height){
+      score++;
+      document.getElementById('score').innerText = 'Score: ' + score;
+      return false;
+    }
+    if(player.x < o.x + o.size && player.x + player.size > o.x && player.y < o.y + o.size && player.y + player.size > o.y){
+      if(player.logoIndex !== o.logoIndex){
+        gameOver = true;
+        setTimeout(() => { alert('Game Over! Score: ' + score); resetGame(); }, 10);
+        return false;
+      }
+    }
+    return true;
+  });
+}
+
+function draw(){
+  if(!imagesReady) return;
+  ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+  if(player.logoIndex < techLogos.length && techLogos[player.logoIndex].complete){
+    ctx.drawImage(techLogos[player.logoIndex], player.x, player.y, player.size, player.size);
+  }
+
+  obstacles.forEach(o => {
+    if(o.logoIndex < techLogos.length && techLogos[o.logoIndex].complete){
+      ctx.drawImage(techLogos[o.logoIndex], o.x, o.y, o.size, o.size);
+    }
+  });
+}
+
+function loop(){ update(); draw(); requestAnimationFrame(loop); }
+
+preloadLogos(() => {
+  loop();
+  setInterval(() => { spawnObstacle(); spawnObstacle(); spawnObstacle(); }, 400);
+});
+</script>
+</body>
+</html>
