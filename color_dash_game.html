@@ -90,6 +90,7 @@ function resetGame(){
   obstacles = [];
   score = 0;
   gameOver = false;
+  keys = {}; // 🔥 fix ghost key input
   document.getElementById('score').innerText = 'Score: 0';
 }
 
@@ -108,7 +109,10 @@ function update(){
     if(player.x < o.x + o.size && player.x + player.size > o.x && player.y < o.y + o.size && player.y + player.size > o.y){
       if(player.logoIndex !== o.logoIndex){
         gameOver = true;
-        setTimeout(() => { alert('Game Over! Score: ' + score); resetGame(); }, 10);
+        setTimeout(() => { 
+          alert('Game Over! Score: ' + score); 
+          resetGame(); 
+        }, 10);
         return false;
       }
     }
@@ -140,3 +144,4 @@ preloadLogos(() => {
 </script>
 </body>
 </html>
+
